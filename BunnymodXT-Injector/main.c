@@ -70,6 +70,8 @@ void DoInjection(HANDLE targetProcess)
 {
 	TCHAR dllFileName[MAX_PATH];
 	LPVOID dllPathAddr;
+	HANDLE loadlibThread;
+	uintptr_t exitCode;
 
 	dllPathAddr = VirtualAllocEx(targetProcess, NULL, sizeof(dllFileName), (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE);
 	if (dllPathAddr == NULL)
@@ -87,14 +89,13 @@ void DoInjection(HANDLE targetProcess)
 		return;
 	}
 
-	HANDLE loadlibThread = CreateRemoteThread(targetProcess, NULL, 0, (LPTHREAD_START_ROUTINE)LoadLibrary, dllPathAddr, 0, NULL);
+	loadlibThread = CreateRemoteThread(targetProcess, NULL, 0, (LPTHREAD_START_ROUTINE)LoadLibrary, dllPathAddr, 0, NULL);
 	if (loadlibThread == NULL)
 	{
 		fprintf(stderr, "Failed creating a LoadLibrary thread: %d\n", GetLastError());
 		return;
 	}
 
-	uintptr_t exitCode;
 	WaitForSingleObject(loadlibThread, INFINITE);
 	if (GetExitCodeThread(loadlibThread, &exitCode) != FALSE)
 	{
