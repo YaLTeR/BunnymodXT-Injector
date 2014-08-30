@@ -66,12 +66,60 @@ BOOL GetBunnymodDLLFileName(TCHAR* fileName, DWORD nSize)
 	return FALSE;
 }
 
-int main()
+void DoInjection(HANDLE targetProcess)
 {
 	TCHAR dllFileName[MAX_PATH];
+	LPVOID dllPathAddr;
+
+	dllPathAddr = VirtualAllocEx(targetProcess, NULL, sizeof(dllFileName), (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE);
+	if (dllPathAddr == NULL)
+	{
+		fprintf(stderr, "Failed allocating memory: %d\n", GetLastError());
+		return;
+	}
+
+	if (!GetBunnymodDLLFileName(dllFileName, MAX_PATH))
+		return; // The function outputs error messages itself.
+
+	if (WriteProcessMemory(targetProcess, dllPathAddr, dllFileName, sizeof(dllFileName), NULL) == FALSE)
+	{
+		fprintf(stderr, "Failed writing the DLL path to the process: %d\n", GetLastError());
+		return;
+	}
+
+	HANDLE loadlibThread = CreateRemoteThread(targetProcess, NULL, 0, (LPTHREAD_START_ROUTINE)LoadLibrary, dllPathAddr, 0, NULL);
+	if (loadlibThread == NULL)
+	{
+		fprintf(stderr, "Failed creating a LoadLibrary thread: %d\n", GetLastError());
+		return;
+	}
+
+	uintptr_t exitCode;
+	WaitForSingleObject(loadlibThread, INFINITE);
+	if (GetExitCodeThread(loadlibThread, &exitCode) != FALSE)
+	{
+		if (exitCode != 0)
+		{
+			_tprintf(TEXT("Success! DLL module address: %p\n"), exitCode);
+		}
+		else
+		{
+			fputs("LoadLibrary failed.\n", stderr);
+		}
+	}
+	else
+	{
+		fprintf(stderr, "Failed getting the LoadLibrary return value: %d\n", GetLastError());
+	}
+
+	CloseHandle(loadlibThread);
+	VirtualFreeEx(targetProcess, dllPathAddr, 0, MEM_RELEASE);
+}
+
+int main()
+{
 	HANDLE hlProcess;
 	DWORD hlPID = GetHLProcessID();
-	LPVOID dllPathAddr;
 
 	if (hlPID == 0)
 	{
@@ -88,54 +136,7 @@ int main()
 		return 0;
 	}
 
-	dllPathAddr = VirtualAllocEx(hlProcess, NULL, sizeof(dllFileName), (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE);
-	if (dllPathAddr != NULL)
-	{
-		if (GetBunnymodDLLFileName(dllFileName, MAX_PATH))
-		{
-			if (WriteProcessMemory(hlProcess, dllPathAddr, dllFileName, sizeof(dllFileName), NULL) != FALSE)
-			{
-				HANDLE loadlibThread = CreateRemoteThread(hlProcess, NULL, 0, (LPTHREAD_START_ROUTINE)LoadLibrary, dllPathAddr, 0, NULL);
-				if (loadlibThread != NULL)
-				{
-					uintptr_t exitCode;
-
-					WaitForSingleObject(loadlibThread, INFINITE);
-					if (GetExitCodeThread(loadlibThread, &exitCode) != FALSE)
-					{
-						if (exitCode != 0)
-						{
-							_tprintf(TEXT("Success! DLL module address: %p\n"), exitCode);
-						}
-						else
-						{
-							fputs("LoadLibrary failed.\n", stderr);
-						}
-					}
-					else
-					{
-						fprintf(stderr, "Failed getting the LoadLibrary return value: %d\n", GetLastError());
-					}
-
-					CloseHandle(loadlibThread);
-				}
-				else
-				{
-					fprintf(stderr, "Failed creating a LoadLibrary thread: %d\n", GetLastError());
-				}
-			}
-			else
-			{
-				fprintf(stderr, "Failed writing the DLL path to the process: %d\n", GetLastError());
-			}
-		}
-
-		VirtualFreeEx(hlProcess, dllPathAddr, 0, MEM_RELEASE);
-	}
-	else
-	{
-		fprintf(stderr, "Failed allocating memory: %d\n", GetLastError());
-	}
+	DoInjection(hlProcess);
 
 	CloseHandle(hlProcess);
 	getc(stdin);
