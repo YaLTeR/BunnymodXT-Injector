@@ -7,10 +7,11 @@
 
 DWORD GetHLProcessID()
 {
+	HANDLE snapshot;
 	PROCESSENTRY32 entry;
 	entry.dwSize = sizeof(PROCESSENTRY32);
 
-	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (snapshot == INVALID_HANDLE_VALUE)
 	{
 		fprintf(stderr, "CreateToolhelp32Snapshot error: %d\n", GetLastError());
@@ -86,6 +87,7 @@ void DoInjection(HANDLE targetProcess)
 	if (WriteProcessMemory(targetProcess, dllPathAddr, dllFileName, sizeof(dllFileName), NULL) == FALSE)
 	{
 		fprintf(stderr, "Failed writing the DLL path to the process: %d\n", GetLastError());
+		VirtualFreeEx(targetProcess, dllPathAddr, 0, MEM_RELEASE);
 		return;
 	}
 
@@ -93,6 +95,7 @@ void DoInjection(HANDLE targetProcess)
 	if (loadlibThread == NULL)
 	{
 		fprintf(stderr, "Failed creating a LoadLibrary thread: %d\n", GetLastError());
+		VirtualFreeEx(targetProcess, dllPathAddr, 0, MEM_RELEASE);
 		return;
 	}
 
