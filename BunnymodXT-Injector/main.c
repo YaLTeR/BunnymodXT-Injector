@@ -72,7 +72,7 @@ void DoInjection(HANDLE targetProcess)
 	TCHAR dllFileName[MAX_PATH];
 	LPVOID dllPathAddr;
 	HANDLE loadlibThread;
-	uintptr_t exitCode;
+	DWORD exitCode;
 
 	dllPathAddr = VirtualAllocEx(targetProcess, NULL, sizeof(dllFileName), (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE);
 	if (dllPathAddr == NULL)
