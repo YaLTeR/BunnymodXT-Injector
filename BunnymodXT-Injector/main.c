@@ -82,7 +82,10 @@ void DoInjection(HANDLE targetProcess)
 	}
 
 	if (!GetBunnymodDLLFileName(dllFileName, MAX_PATH))
+	{
+		VirtualFreeEx(targetProcess, dllPathAddr, 0, MEM_RELEASE);
 		return; // The function outputs error messages itself.
+	}
 
 	if (WriteProcessMemory(targetProcess, dllPathAddr, dllFileName, sizeof(dllFileName), NULL) == FALSE)
 	{
