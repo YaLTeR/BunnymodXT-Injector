@@ -123,15 +123,30 @@ void DoInjection(HANDLE targetProcess)
 	VirtualFreeEx(targetProcess, dllPathAddr, 0, MEM_RELEASE);
 }
 
-int main()
+BOOL CheckArgs(int argc, char** argv)
+{
+	if ((argc == 2) && !strcmp(argv[1], "-noconfirm"))
+		return FALSE;
+
+	return TRUE;
+}
+
+void waitForKey(BOOL needToWait)
+{
+	if (needToWait == TRUE)
+		getc(stdin);
+}
+
+int main(int argc, char** argv)
 {
 	HANDLE hlProcess;
 	DWORD hlPID = GetHLProcessID();
+	BOOL needToWait = CheckArgs(argc, argv);
 
 	if (hlPID == 0)
 	{
 		fputs("hl.exe is not running!\n", stderr);
-		getc(stdin);
+		waitForKey(needToWait);
 		return 0;
 	}
 
@@ -139,13 +154,13 @@ int main()
 	if (hlProcess == NULL)
 	{
 		fprintf(stderr, "Failed opening the Half-Life process: %d\n", GetLastError());
-		getc(stdin);
+		waitForKey(needToWait);
 		return 0;
 	}
 
 	DoInjection(hlProcess);
 
 	CloseHandle(hlProcess);
-	getc(stdin);
+	waitForKey(needToWait);
 	return 0;
 }
