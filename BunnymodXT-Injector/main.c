@@ -5,7 +5,7 @@
 #include <TlHelp32.h>
 #include <tchar.h>
 
-DWORD GetHLProcessID()
+DWORD GetProcessID(const TCHAR* processName)
 {
 	HANDLE snapshot;
 	PROCESSENTRY32 entry;
@@ -22,7 +22,7 @@ DWORD GetHLProcessID()
 	{
 		do
 		{
-			if (_tcsicmp(entry.szExeFile, TEXT("hl.exe")) == 0)
+			if (_tcsicmp(entry.szExeFile, processName) == 0)
 			{
 				CloseHandle(snapshot);
 				return entry.th32ProcessID;
@@ -123,12 +123,31 @@ void DoInjection(HANDLE targetProcess)
 	VirtualFreeEx(targetProcess, dllPathAddr, 0, MEM_RELEASE);
 }
 
-BOOL CheckArgs(int argc, char** argv)
+void CheckArgs(int argc, const TCHAR** argv, BOOL* needToWait, size_t processNameSize, TCHAR* processName)
 {
-	if ((argc == 2) && !strcmp(argv[1], "-noconfirm"))
-		return FALSE;
+	if (needToWait)
+		*needToWait = TRUE;
 
-	return TRUE;
+	if (processName)
+	{
+		_tcsncpy(processName, TEXT("hl.exe"), processNameSize);
+		if (processNameSize <= 6)
+			processName[processNameSize] = '\0';
+	}
+
+	for (int i = 1; i < argc; ++i)
+	{
+		if (needToWait && (_tcscmp(argv[i], TEXT("-noconfirm")) == 0))
+			*needToWait = FALSE;
+
+		if (processName && (_tcscmp(argv[i], TEXT("-processname")) == 0) && ((i + 1) < argc))
+		{
+			i++;
+			_tcsncpy(processName, argv[i], processNameSize);
+			if (processNameSize <= _tcslen(argv[i]))
+				processName[processNameSize] = '\0';
+		}
+	}
 }
 
 void waitForKey(BOOL needToWait)
@@ -137,15 +156,19 @@ void waitForKey(BOOL needToWait)
 		getc(stdin);
 }
 
-int main(int argc, char** argv)
+int _tmain(int argc, TCHAR** argv)
 {
 	HANDLE hlProcess;
-	DWORD hlPID = GetHLProcessID();
-	BOOL needToWait = CheckArgs(argc, argv);
+	DWORD hlPID;
+	BOOL needToWait;
+	TCHAR processName[16];
+	
+	CheckArgs(argc, argv, &needToWait, (sizeof(processName) / sizeof(TCHAR)), processName);
+	hlPID = GetProcessID(processName);
 
 	if (hlPID == 0)
 	{
-		fputs("hl.exe is not running!\n", stderr);
+		_ftprintf(stderr, TEXT("%s is not running!\n"), processName);
 		waitForKey(needToWait);
 		return 0;
 	}
@@ -153,7 +176,7 @@ int main(int argc, char** argv)
 	hlProcess = OpenProcess((PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ), FALSE, hlPID);
 	if (hlProcess == NULL)
 	{
-		fprintf(stderr, "Failed opening the Half-Life process: %d\n", GetLastError());
+		fprintf(stderr, "Failed opening the process: %d\n", GetLastError());
 		waitForKey(needToWait);
 		return 0;
 	}
