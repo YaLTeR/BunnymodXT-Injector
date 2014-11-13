@@ -5,7 +5,7 @@ A small simple injector for Bunnymod XT. Injects **BunnymodXT.dll** from the dir
 
 #How to use
 
-- Make sure you have [MSVC++ 2013 redistributables](http://www.microsoft.com/en-US/download/details.aspx?id=40784) installed.
+- Make sure you have [MSVC++ 2013 redistributables (x86)](http://www.microsoft.com/en-US/download/details.aspx?id=40784) installed.
 
 1. Get a Bunnymod XT DLL from [here](https://github.com/YaLTeR/BunnymodXT/releases).
 2. Place it into the same folder as the injector.
