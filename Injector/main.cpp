@@ -223,7 +223,9 @@ auto DoInjection(HANDLE targetProcess)
 
 auto wmain(int argc, wchar_t* argv[])
 {
-	_setmode(_fileno(stdout), _O_U16TEXT); // To make the Unicode characters print correctly.
+	// To make the Unicode characters print correctly.
+	_setmode(_fileno(stdout), _O_U16TEXT);
+	_setmode(_fileno(stderr), _O_U16TEXT);
 
 	auto process = HANDLE{}; // Our target process.
 	auto main_thread = HANDLE{}; // If we are creating our own process, we need to resume this thread.
