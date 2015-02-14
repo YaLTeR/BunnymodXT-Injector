@@ -5,15 +5,27 @@ A small simple injector for Bunnymod XT. Injects **BunnymodXT.dll** from the dir
 
 #How to use
 
-- Make sure you have [MSVC++ 2013 redistributables (x86)](http://www.microsoft.com/en-US/download/details.aspx?id=40784) installed.
-
 1. Get a Bunnymod XT DLL from [here](https://github.com/YaLTeR/BunnymodXT/releases).
 2. Place it into the same folder as the injector.
-3. Run the game.
-4. Run the injector.
 
-If you get an error opening process: 5, run as admin.
+###Standard way
+1. Run the game.
+2. Run the injector.
+
+###Game start way (you will have to do steps 1-7 only once)
+1. If you don't have a shortcut to your `hl.exe`, create one.
+2. Right click on the shortcut and click *Properties*.
+3. Copy everything from the *Target* field.
+4. You can now delete this shortcut.
+5. Create a shortcut to the injector.
+6. Go into its *Properties*.
+7. Place the cursor in the end of the *Target* field, press space and Ctrl-V (paste), click OK.
+8. You can now use this shortcut to start the game with BunnymodXT!
+
+##If you get an error, try launching the injector as admin.
 
 #Additional flags
-- **-noconfirm** makes the injector close by itself, not requiring an Enter key press.
-- **-processname <name>** makes the injector inject into an arbitrary process. Example: *-processname hlds.exe*
+- **-processname <name>** makes the injector inject into a process with the given name. Example: `-processname hlds.exe`
+
+#Building
+You will need at least Visual Studio 2015 CTP.
