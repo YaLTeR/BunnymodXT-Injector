@@ -185,28 +185,23 @@ auto GetBunnymodDLLFileName()
 auto DoInjection(HANDLE targetProcess)
 {
 	auto dll_file_name = GetBunnymodDLLFileName();
-	if (dll_file_name.empty()) {
-		std::getchar();
+	if (dll_file_name.empty())
 		return false; // The function outputs an error message by itself.
-	}
 
 	VirtualAddressHolder target_addr(targetProcess, VirtualAllocEx(targetProcess, NULL, (dll_file_name.size() + 1) * sizeof(wchar_t), (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE));
 	if (target_addr.get() == NULL) {
 		std::wcerr << L"Error allocating memory in the target process: " << GetErrorMessage();
-		std::getchar();
 		return false;
 	}
 
 	if (WriteProcessMemory(targetProcess, target_addr.get(), dll_file_name.c_str(), (dll_file_name.size() + 1) * sizeof(wchar_t), NULL) == 0) {
 		std::wcerr << L"Error writing the DLL filename to the target process: " << GetErrorMessage();
-		std::getchar();
 		return false;
 	}
 
 	HandleHolder load_thread(CreateRemoteThread(targetProcess, NULL, 0, (LPTHREAD_START_ROUTINE)LoadLibraryW, target_addr.get(), 0, NULL), NULL);
 	if (load_thread.get() == NULL) {
 		std::wcerr << L"Error spawning a LoadLibrary thread in the target process: " << GetErrorMessage();
-		std::getchar();
 		return false;
 	}
 
@@ -214,13 +209,11 @@ auto DoInjection(HANDLE targetProcess)
 	DWORD exit_code;
 	if (GetExitCodeThread(load_thread.get(), &exit_code) == 0) {
 		std::wcerr << L"Error getting the LoadLibrary return value: " << GetErrorMessage();
-		std::getchar();
 		return false;
 	}
 
 	if (exit_code == NULL) {
-		std::wcerr << L"LoadLibrary failed.\n";
-		std::getchar();
+		std::wcerr << L"LoadLibrary failed. This usually means that you don't have BunnymodXT.dll in the same folder as the injector.\n";
 		return false;
 	}
 
@@ -290,8 +283,10 @@ auto wmain(int argc, wchar_t* argv[])
 	if (DoInjection(process)) {
 		if (resume_event != NULL)
 			std::wcout << L"Waiting for the DLL to finish loading to resume the process.\n";
-	} else
+	} else {
+		std::getchar(); // Let the user read the error message.
 		resume_event = NULL;
+	}
 
 	if (need_to_resume) {
 		if (resume_event != NULL)
