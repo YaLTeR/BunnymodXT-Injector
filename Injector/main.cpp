@@ -72,9 +72,9 @@ auto ContainsSpace(wchar_t* str)
 
 auto LastSlashPos(std::wstring const& fileName)
 {
-	auto slash = fileName.rfind('\\');
+	auto slash = fileName.rfind(L'\\');
 	if (slash == std::wstring::npos)
-		slash = fileName.rfind('/');
+		slash = fileName.rfind(L'/');
 	return slash;
 }
 
@@ -217,7 +217,7 @@ auto DoInjection(HANDLE targetProcess)
 		return false;
 	}
 
-	std::wcout << "Success! DLL module address: " << std::hex << exit_code << L'\n';
+	std::wcout << L"Success! DLL module address: " << std::hex << exit_code << L'\n';
 	return true;
 }
 
