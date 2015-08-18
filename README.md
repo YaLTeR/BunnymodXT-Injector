@@ -5,8 +5,9 @@ A small simple injector for Bunnymod XT. Injects **BunnymodXT.dll** from the dir
 
 #How to use
 
-1. Get a Bunnymod XT DLL from [here](https://github.com/YaLTeR/BunnymodXT/releases).
-2. Place it into the same folder as the injector.
+1. Make sure you have the [VS 2015 Redistributables (x86)](https://www.microsoft.com/en-us/download/details.aspx?id=48145) installed.
+2. Get a Bunnymod XT DLL from [here](https://github.com/YaLTeR/BunnymodXT/releases).
+3. Place it into the same folder as the injector.
 
 ###Standard way
 1. Run the game.
