@@ -221,7 +221,7 @@ auto DoInjection(HANDLE targetProcess)
 	return true;
 }
 
-auto wmain(int argc, wchar_t* argv[])
+auto wmain(int argc, wchar_t* argv[]) -> int
 {
 	// To make the Unicode characters print correctly.
 	_setmode(_fileno(stdout), _O_U16TEXT);
