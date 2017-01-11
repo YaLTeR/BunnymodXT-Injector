@@ -10,7 +10,9 @@
 #include <fcntl.h>
 #include <io.h>
 #include <windows.h>
-#include <TlHelp32.h> // Needs to be after windows.h.
+#include <tlhelp32.h> // Needs to be after windows.h.
+
+using namespace std::literals;
 
 const wchar_t EVENT_NAME[] = L"BunnymodXT-Injector";
 
@@ -100,26 +102,30 @@ auto GetErrorMessage()
 
 auto ParseArgs(int argc, wchar_t* argv[])
 {
-	// No arguments:
-	// assume we want to inject into a running hl.exe.
-	if (argc == 1)
-		return std::make_tuple(std::wstring{ L"hl.exe" }, std::wstring{}, std::wstring{}, false);
+	std::wstring processname, dllname;
 
-	// Two arguments and the first one is -processname:
-	// assume we want to inject into a running process with the name specified in the second argument.
-	if (argc == 3 && !std::wcsncmp(argv[1], L"-processname", 13))
-		return std::make_tuple(std::wstring{ argv[2] }, std::wstring{}, std::wstring{}, false);
+	int i = 1;
+	for (; i < argc - 1; ++i) {
+		if (!std::wcsncmp(argv[i], L"-processname", sizeof("-processname")))
+			processname = argv[++i];
+		else if (!std::wcsncmp(argv[i], L"-dllname", sizeof("-dllname")))
+			dllname = argv[++i];
+		else
+			break;
+	}
 
-	// None of the above conditions were met:
-	// assume we want to launch a process.
+	if (i == argc || !processname.empty())
+		return std::make_tuple(processname, dllname, std::wstring{}, std::wstring{}, false);
+
+	// We want to launch a process.
 	auto cmd_line = std::wstring{};
-	for (int i = 1; i < argc; ++i) {
-		if (i != 1)
+	for (int j = i; j < argc; ++j) {
+		if (j != i)
 			cmd_line += L' ';
-		auto space = ContainsSpace(argv[i]);
+		auto space = ContainsSpace(argv[j]);
 		if (space)
 			cmd_line += L'"';
-		cmd_line += argv[i];
+		cmd_line += argv[j];
 		if (space)
 			cmd_line += L'"';
 	}
@@ -128,7 +134,7 @@ auto ParseArgs(int argc, wchar_t* argv[])
 	//std::wcout << L"cmd_line: " << cmd_line << L'\n';
 
 	auto have_work_dir = true;
-	auto work_dir = std::wstring{ argv[1] };
+	auto work_dir = std::wstring{ argv[i] };
 	auto slash = LastSlashPos(work_dir);
 	if (slash != std::wstring::npos)
 		work_dir = work_dir.substr(0, slash);
@@ -140,7 +146,7 @@ auto ParseArgs(int argc, wchar_t* argv[])
 	//	std::wcout << L"No work_dir.";
 	//std::wcout << L'\n';
 
-	return std::make_tuple(std::wstring{}, cmd_line, work_dir, have_work_dir);
+	return std::make_tuple(std::wstring{}, dllname, cmd_line, work_dir, have_work_dir);
 }
 
 DWORD GetProcessID(std::wstring const& processName)
@@ -165,7 +171,7 @@ DWORD GetProcessID(std::wstring const& processName)
 	return 0;
 }
 
-auto GetBunnymodDLLFileName()
+auto GetDLLFileName(std::wstring dll_name)
 {
 	wchar_t exe_path[MAX_PATH];
 	if (GetModuleFileNameW(NULL, exe_path, MAX_PATH) != 0) {
@@ -174,7 +180,7 @@ auto GetBunnymodDLLFileName()
 		auto slash = LastSlashPos(fileName);
 		if (slash != std::wstring::npos)
 			fileName = fileName.substr(0, slash);
-		fileName += L"\\BunnymodXT.dll";
+		fileName += L'\\' + (dll_name.empty() ? L"BunnymodXT.dll"s : dll_name);
 		return fileName;
 	} else
 		std::wcerr << L"Error getting the injector file name: " << GetErrorMessage();
@@ -182,9 +188,9 @@ auto GetBunnymodDLLFileName()
 	return std::wstring{};
 }
 
-auto DoInjection(HANDLE targetProcess)
+auto DoInjection(HANDLE targetProcess, std::wstring dll_name)
 {
-	auto dll_file_name = GetBunnymodDLLFileName();
+	auto dll_file_name = GetDLLFileName(dll_name);
 	if (dll_file_name.empty())
 		return false; // The function outputs an error message by itself.
 
@@ -212,7 +218,7 @@ auto DoInjection(HANDLE targetProcess)
 		return false;
 	}
 
-	if (exit_code == NULL) {
+	if (exit_code == 0) {
 		std::wcerr << L"LoadLibrary failed. This usually means that you don't have BunnymodXT.dll in the same folder as the injector.\n";
 		return false;
 	}
@@ -233,9 +239,10 @@ auto wmain(int argc, wchar_t* argv[]) -> int
 
 	auto parsed_args = ParseArgs(argc, argv);
 	auto process_name = std::get<0>(parsed_args);
-	auto cmd_line = std::get<1>(parsed_args);
-	auto work_dir = std::get<2>(parsed_args);
-	auto have_work_dir = std::get<3>(parsed_args);
+	auto dll_name = std::get<1>(parsed_args);
+	auto cmd_line = std::get<2>(parsed_args);
+	auto work_dir = std::get<3>(parsed_args);
+	auto have_work_dir = std::get<4>(parsed_args);
 
 	if (process_name.empty()) {
 		// Make a process ourselves.
@@ -282,7 +289,7 @@ auto wmain(int argc, wchar_t* argv[]) -> int
 			std::wcerr << L"Error creating an event: " << GetErrorMessage();
 	}
 
-	if (DoInjection(process)) {
+	if (DoInjection(process, dll_name)) {
 		if (resume_event != NULL)
 			std::wcout << L"Waiting for the DLL to finish loading to resume the process.\n";
 	} else {
