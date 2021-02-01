@@ -74,10 +74,7 @@ auto ContainsSpace(wchar_t* str)
 
 auto LastSlashPos(std::wstring const& fileName)
 {
-	auto slash = fileName.rfind(L'\\');
-	if (slash == std::wstring::npos)
-		slash = fileName.rfind(L'/');
-	return slash;
+	return fileName.find_last_of(L"\\/");
 }
 
 auto GetErrorMessage()
