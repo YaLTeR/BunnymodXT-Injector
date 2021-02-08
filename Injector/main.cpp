@@ -128,7 +128,7 @@ auto ParseArgs(int argc, wchar_t* argv[])
 	}
 	if (cmd_line.size() > 32767)
 		cmd_line.resize(32767); // Max length of lpCommandLine - one character for \0.
-	//std::wcout << L"cmd_line: " << cmd_line << L'\n';
+	// std::wcout << L"cmd_line: `" << cmd_line << L"`\n";
 
 	auto have_work_dir = true;
 	auto work_dir = std::wstring{ argv[i] };
@@ -137,11 +137,11 @@ auto ParseArgs(int argc, wchar_t* argv[])
 		work_dir = work_dir.substr(0, slash);
 	else
 		have_work_dir = false;
-	//if (have_work_dir)
-	//	std::wcout << L"work_dir: " << work_dir;
-	//else
-	//	std::wcout << L"No work_dir.";
-	//std::wcout << L'\n';
+	// if (have_work_dir)
+	// 	std::wcout << L"work_dir: `" << work_dir << L"`";
+	// else
+	// 	std::wcout << L"No work_dir.";
+	// std::wcout << L'\n';
 
 	return std::make_tuple(std::wstring{}, dllname, cmd_line, work_dir, have_work_dir);
 }
@@ -185,12 +185,8 @@ auto GetDLLFileName(std::wstring dll_name)
 	return std::wstring{};
 }
 
-auto DoInjection(HANDLE targetProcess, std::wstring dll_name)
+auto DoInjection(HANDLE targetProcess, std::wstring dll_file_name)
 {
-	auto dll_file_name = GetDLLFileName(dll_name);
-	if (dll_file_name.empty())
-		return false; // The function outputs an error message by itself.
-
 	VirtualAddressHolder target_addr(targetProcess, VirtualAllocEx(targetProcess, NULL, (dll_file_name.size() + 1) * sizeof(wchar_t), (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE));
 	if (target_addr.get() == NULL) {
 		std::wcerr << L"Error allocating memory in the target process: " << GetErrorMessage();
@@ -222,6 +218,12 @@ auto DoInjection(HANDLE targetProcess, std::wstring dll_name)
 
 	std::wcout << L"Success! DLL module address: " << std::hex << exit_code << L'\n';
 	return true;
+}
+
+bool DoesFileExist(std::wstring file_name)
+{
+	auto attr = GetFileAttributesW(file_name.c_str());
+	return attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY) == 0;
 }
 
 auto wmain(int argc, wchar_t* argv[]) -> int
@@ -286,19 +288,57 @@ auto wmain(int argc, wchar_t* argv[]) -> int
 			std::wcerr << L"Error creating an event: " << GetErrorMessage();
 	}
 
-	if (DoInjection(process, dll_name)) {
-		if (resume_event != NULL)
-			std::wcout << L"Waiting for the DLL to finish loading to resume the process.\n";
-	} else {
-		std::getchar(); // Let the user read the error message.
-		resume_event = NULL;
-	}
+	// Inject bxt-rs first if:
+	// 1. We created the process.
+	// 2. There's no -dllname override.
+	// 3. There was no error getting bxt-rs DLL path.
+	// 4. The bxt-rs DLL exists.
+	auto bxt_rs_file_name = GetDLLFileName(L"bxt_rs.dll");
+	auto reset_event = false;
+	// std::wcout << L"bxt-rs dll filename: `" << bxt_rs_file_name << L"`\n";
+	if (resume_event != NULL && dll_name.empty() && !bxt_rs_file_name.empty() && DoesFileExist(bxt_rs_file_name)) {
+		std::wcout << L"Injecting bxt-rs.\n";
+		if (DoInjection(process, bxt_rs_file_name)) {
+			std::wcout << L"Waiting for the bxt-rs to finish loading.\n";
 
-	if (need_to_resume) {
-		if (resume_event != NULL)
 			if (WaitForSingleObject(resume_event, INFINITE) == WAIT_FAILED)
 				std::wcerr << L"Error waiting for the event: " << GetErrorMessage();
 
+			if (ResetEvent(resume_event) == 0)
+				std::wcerr << L"Error resetting the event: " << GetErrorMessage();
+			reset_event = true;
+		} else {
+			std::getchar(); // Let the user read the error message.
+		}
+	}
+
+	auto dll_file_name = GetDLLFileName(dll_name);
+	// std::wcout << L"dll filename: `" << dll_file_name << L"`\n";
+	if (dll_file_name.empty()) {
+		std::getchar();
+		resume_event = NULL;
+	} else if (!DoesFileExist(dll_file_name)) {
+		if (!reset_event) {
+			std::wcerr << L"The DLL `" << dll_file_name << L"` does not exist.\n";
+			std::getchar();
+			resume_event = NULL;
+		}
+	} else {
+		std::wcout << L"Injecting `" << dll_file_name << L"`.\n";
+		if (!DoInjection(process, dll_file_name)) {
+			std::getchar(); // Let the user read the error message.
+			resume_event = NULL;
+		}
+	}
+
+	if (need_to_resume) {
+		if (resume_event != NULL && !reset_event) {
+			std::wcout << L"Waiting for the DLL to finish loading to resume the process.\n";
+			if (WaitForSingleObject(resume_event, INFINITE) == WAIT_FAILED)
+				std::wcerr << L"Error waiting for the event: " << GetErrorMessage();
+		}
+
+		std::wcout << L"Resuming Half-Life.\n";
 		ResumeThread(main_thread);
 	}
 
