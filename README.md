@@ -1,13 +1,12 @@
 BunnymodXT-Injector
 ===================
 
-A small simple injector for Bunnymod XT. Injects **BunnymodXT.dll** from the directory where the injector is located.
+A small simple injector for Bunnymod XT. Injects **BunnymodXT.dll** from the directory where the injector is located. Also injects `bxt_rs.dll` if it's present when using the Game start way.
 
 # How to use
 
-1. Make sure you have the [VS 2015 Redistributables (x86)](https://www.microsoft.com/en-us/download/details.aspx?id=48145) installed.
-2. Get a Bunnymod XT DLL from [here](https://github.com/YaLTeR/BunnymodXT/releases).
-3. Place it into the same folder as the injector.
+1. Get a Bunnymod XT DLL from [here](https://github.com/YaLTeR/BunnymodXT/releases).
+1. Place it into the same folder as the injector.
 
 ### Standard way
 1. Run the game.
@@ -21,12 +20,8 @@ A small simple injector for Bunnymod XT. Injects **BunnymodXT.dll** from the dir
 5. Create a shortcut to the injector.
 6. Go into its *Properties*.
 7. Place the cursor in the end of the *Target* field, press space and Ctrl-V (paste), click OK.
-8. You can now use this shortcut to start the game with BunnymodXT!
-
-## If you get an error, try launching the injector as admin.
+8. You can now use this shortcut to start the game with Bunnymod XT!
 
 # Additional flags
+- **-dllname <name.dll>** makes the injector inject the given DLL instead of Bunnymod XT. Example: `-dllname bxt_with_cheats.dll`
 - **-processname <name>** makes the injector inject into a process with the given name. Example: `-processname hlds.exe`
-
-# Building
-You will need at least Visual Studio 2015 CTP.
