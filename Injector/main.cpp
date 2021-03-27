@@ -111,6 +111,9 @@ auto ParseArgs(int argc, wchar_t* argv[])
 			break;
 	}
 
+	if (i == argc && processname.empty())
+		processname = L"hl.exe";
+
 	if (i == argc || !processname.empty())
 		return std::make_tuple(processname, dllname, std::wstring{}, std::wstring{}, false);
 
