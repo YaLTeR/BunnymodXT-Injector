@@ -324,8 +324,8 @@ auto wmain(int argc, wchar_t* argv[]) -> int
 		if (!reset_event) {
 			std::wcerr << L"The DLL `" << dll_file_name << L"` does not exist.\n";
 			std::getchar();
-			resume_event = NULL;
 		}
+		resume_event = NULL;
 	} else {
 		std::wcout << L"Injecting `" << dll_file_name << L"`.\n";
 		if (!DoInjection(process, dll_file_name)) {
@@ -335,7 +335,7 @@ auto wmain(int argc, wchar_t* argv[]) -> int
 	}
 
 	if (need_to_resume) {
-		if (resume_event != NULL && !reset_event) {
+		if (resume_event != NULL) {
 			std::wcout << L"Waiting for the DLL to finish loading to resume the process.\n";
 			if (WaitForSingleObject(resume_event, INFINITE) == WAIT_FAILED)
 				std::wcerr << L"Error waiting for the event: " << GetErrorMessage();
